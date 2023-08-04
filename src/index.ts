@@ -8,12 +8,52 @@ export default class PN532 extends EventEmitter {
     private _direction: number = 0xd4;
     private isOpen: boolean = false;
     private isWakeup: boolean = false;
+    private logger: {
+        step: Function,
+        infoCard: Function,
+        bufferIn: Function,
+        bufferOut: Function
+    } = {
+        step: (c) => {},
+        bufferIn: (c) => {},
+        bufferOut: (c) => {},
+        infoCard: (c) => {}
+    };
 
-    constructor(private port: SerialPort, private pollInterval: number, private options?: any) {
+    constructor(private port: SerialPort, private pollInterval: number, private options?: {
+        encripted: boolean,
+        tagNumber?: number | Buffer,
+        blockAddress?: number | Buffer,
+        authType?: number | Buffer,
+        authKey?: number[] | Buffer,
+        showSteps?: boolean,
+        showBufferIn?: boolean,
+        showBufferOut?: boolean,
+        showInfoCard?: boolean
+    }) {
         super();
-        if (this.options && !this.options.showDebug) {
-            console.debug = (c) => {}
+        const _options = this.options;
+        if (_options.showSteps) {
+            this.logger.step = (log) => {
+                console.log('Step:', log);
+            }
         }
+        if (_options.showBufferIn) {
+            this.logger.bufferIn = (log) => {
+                console.log('BufferIn:', log);
+            }
+        }
+        if (_options.showBufferOut) {
+            this.logger.bufferOut = (log) => {
+                console.log('BufferOut:', log);
+            }
+        }
+        if (_options.showInfoCard) {
+            this.logger.infoCard = (log) => {
+                console.log('InfoCard:', log);
+            }
+        }
+
         this.on('newListener', (event) => {
             if (event === 'data') {
                 var scanTag = () => {
@@ -38,20 +78,20 @@ export default class PN532 extends EventEmitter {
     }
 
     public getFirmware() {
-        console.log("Get Firmware...");
+        this.logger.step("Get Firmware...");
         const data = [0x02];
-        const frame = new Frame(this.port, data, this._direction);
+        const frame = new Frame(this.port, data, this._direction, this.logger);
         return frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
     }
 
     public async getTag() {
-        console.log("Waiting tag...");
+        this.logger.step("Waiting tag...");
         const data = [
             ECOMMANDS.PN532_COMMAND_INLISTPASSIVETARGET,
             0x01,
             0x00
         ];
-        const frame = new Frame(this.port, data, this._direction);
+        const frame = new Frame(this.port, data, this._direction, this.logger);
         const buffer = await frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
         const uid = buffer.slice(1).slice(12, 12 + buffer[10]).toString("hex").match(/.{1,2}/g).join(":");
         const uidDec = buffer.slice(1).slice(12, 12 + buffer[10]).join('');
@@ -65,11 +105,11 @@ export default class PN532 extends EventEmitter {
     }
 
     async readBlock() {
-        console.debug("Read block...");
-        var options = this.options || {};
+        this.logger.step("Read block...");
+        const _options = this.options;
 
-        const tagNumber = options.tagNumber || 0x01;
-        const blockAddress = options.blockAddress || 0x01;
+        const tagNumber = _options.tagNumber || 0x01;
+        const blockAddress = _options.blockAddress || 0x01;
 
         const data = [
             ECOMMANDS.PN532_COMMAND_INDATAEXCHANGE,
@@ -77,15 +117,15 @@ export default class PN532 extends EventEmitter {
             ECOMMANDS.MIFARE_CMD_READ,
             blockAddress,
         ];
-        const frame = new Frame(this.port, data, this._direction);
+        const frame = new Frame(this.port, data, this._direction, this.logger);
         const buffer = await frame.runCommand(this.isWakeup);
         const dataCard = buffer.slice(8, 8 + 6);
         return dataCard.map((i) => i).join("");
     }
 
     authenticateBlock(uidArray: any, lgUid: number) {
-        console.debug("Authenticate block...");
-        var options = this.options || {};
+        this.logger.step("Authenticate block...");
+        const options = this.options;
 
         const blockAddress = options.blockAddress || 0x01;
         const authType = options.authType || ECOMMANDS.MIFARE_CMD_AUTH_A;
@@ -103,7 +143,7 @@ export default class PN532 extends EventEmitter {
         try {
             console.debug(uidArray);
             if(uidArray.length != lgUid) throw 'Tamanho do UID incompativel';
-            const frame = new Frame(this.port, data, this._direction);
+            const frame = new Frame(this.port, data, this._direction, this.logger);
             return frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
         } catch(_e){
             console.debug(_e);
@@ -113,15 +153,15 @@ export default class PN532 extends EventEmitter {
 
     public async powerDown() {
         try {
-            console.debug("Setting Power Down...");
+            this.logger.step("Setting Power Down...");
             const data = [
                 ECOMMANDS.PN532_COMMAND_POWERDOWN,
                 0x55
             ];
 
-            const frame = new Frame(this.port, data, this._direction);
-            console.debug(await frame.runCommand(this.isWakeup, (res) => this.isWakeup = res));
-            await this.sleep(1000);
+            const frame = new Frame(this.port, data, this._direction, this.logger);
+            await frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
+            await this.sleep(900);
             this.isWakeup = false;
             await this.setSAM();
             return;
@@ -132,7 +172,7 @@ export default class PN532 extends EventEmitter {
 
     public setSAM() {
         try {
-            console.log("Setting SAM config...");
+            this.logger.step("Setting SAM config...");
             const timeout = 0x00;
             const data = [
                 ECOMMANDS.PN532_COMMAND_SAMCONFIGURATION,
@@ -141,7 +181,7 @@ export default class PN532 extends EventEmitter {
                 0x01 // Use IRQ pin
             ];
 
-            const frame = new Frame(this.port, data, this._direction);
+            const frame = new Frame(this.port, data, this._direction, this.logger);
             return frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
         } catch (_e) {
             console.error(_e);
@@ -150,9 +190,9 @@ export default class PN532 extends EventEmitter {
 
     async readCard() {
         try {
-            const options = this.options || {};
+            const options = this.options;
             const infoCard = await this.getTag();
-            console.debug(infoCard);
+            this.logger.infoCard(infoCard);
             if (options.encripted) {
                 await this.authenticateBlock(infoCard.uid, infoCard.lengthUid);
                 const dataBlock = await this.readBlock();
@@ -165,14 +205,10 @@ export default class PN532 extends EventEmitter {
     }
 
     async open() {
-        if (this.port && this.port.isOpen) {
-            await this.powerDown();
-            //await this.setSAM();
-            //await this.getFirmware();
-            this.isOpen = true;
-        } else {
-            setTimeout(() => this.open(), 100);
-        }
+        await this.powerDown();
+        this.isOpen = true;
+        //await this.setSAM();
+        //await this.getFirmware();
     }
 
     async stop() {

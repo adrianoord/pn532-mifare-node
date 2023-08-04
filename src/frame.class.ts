@@ -12,16 +12,19 @@ export enum EFrameType {
 export default class Frame {
     public frameEmitter: EventEmitter = new EventEmitter();
 
-    constructor(private port: SerialPort, private _data, private _direction, private options?: {waitAck: boolean}) {
+    constructor(private port: SerialPort, private _data, private _direction, private logger: {
+        step: Function,
+        infoCard: Function,
+        bufferIn: Function,
+        bufferOut: Function
+    }) {
         this.port.on('data', (frame) => {
-            console.debug(frame);
             this.frameEmitter.emit('frame', frame);
         });
     }
 
     public runCommand(isWakeup:boolean, callback?:Function) {
         return new Promise<Buffer>(async (resolve, reject) => {
-            const options = this.options || ({} as any);
             try {
                 var removeListeners = () => {
                     this.frameEmitter.removeListener('frame', onFrame);
@@ -30,8 +33,8 @@ export default class Frame {
 
                 // Wire up listening to wait for response (or error) from PN532
                 var onFrame = (frame) => {
+                    this.logger.bufferIn(frame);
                     const typeFrame = this.fromBuffer(frame);
-                    console.debug(typeFrame);
                     switch(typeFrame) {
                         case EFrameType.ACKFRAME:
                             break;
@@ -56,8 +59,7 @@ export default class Frame {
                     buffer = Buffer.concat([wakeUp, this.toBuffer()]);
                     callback(true);
                 }
-                //console.debug('Enviando ---->:');
-                //console.debug(buffer.toString('hex').match(/.{1,2}/g).join(", "));
+                this.logger.bufferOut(buffer);
                 this.port.write(buffer);
             } catch (_e) {
                 console.error(_e);
