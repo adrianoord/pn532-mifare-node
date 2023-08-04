@@ -17,7 +17,7 @@ export default class PN532 extends EventEmitter {
         this.on('newListener', (event) => {
             if (event === 'data') {
                 var scanTag = () => {
-                    if (this.isOpen) {
+                    if (this.isOpen && this.port && this.port.isOpen) {
                         this.readCard().then(async (tag) => {
                             if (tag) {
                                 if (this.isOpen) this.emit('data', tag);
@@ -165,10 +165,14 @@ export default class PN532 extends EventEmitter {
     }
 
     async open() {
-        await this.powerDown();
-        //await this.setSAM();
-        //await this.getFirmware();
-        this.isOpen = true;
+        if (this.port && this.port.isOpen) {
+            await this.powerDown();
+            //await this.setSAM();
+            //await this.getFirmware();
+            this.isOpen = true;
+        } else {
+            setTimeout(() => this.open(), 100);
+        }
     }
 
     async stop() {
