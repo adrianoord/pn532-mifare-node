@@ -205,10 +205,14 @@ export default class PN532 extends EventEmitter {
     }
 
     async open() {
-        await this.powerDown();
-        this.isOpen = true;
-        //await this.setSAM();
-        //await this.getFirmware();
+        if (!this.isOpen && this.port && this.port.isOpen) {
+            await this.powerDown();
+            this.isOpen = true;
+            //await this.setSAM();
+            //await this.getFirmware();
+        } else {
+            setTimeout(() => this.open(), 100);
+        }
     }
 
     async stop() {
