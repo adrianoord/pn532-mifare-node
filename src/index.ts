@@ -212,7 +212,7 @@ export default class PN532 extends EventEmitter {
                     break;
             }
             const response = await this._frame.runCommand(data, this._direction);
-            this.logger.infoCard(response);
+            this.logger.step(response);
             clearTimeout(timeoutInit);
             await this.sendACK();
             await this.sleep(500);
