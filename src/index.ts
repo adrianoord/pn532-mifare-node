@@ -226,6 +226,7 @@ export default class PN532 extends EventEmitter {
         frame.runCommand(this.isWakeup, (res) => {});
         await this.sleep(500);
         await this.sendACK();
+        await this.sleep(500);
         this.port.close();
         await this.sleep(500);
         const newSerialPort = new SerialPort({ path: this.port.path, baudRate: 230400 });
@@ -234,6 +235,7 @@ export default class PN532 extends EventEmitter {
     }
 
     public async sendACK() {
+        this.logger.step("Sending ACK...");
         const data = [0, 0, 255, 0, 255, 0];
         return this.port.write(data);
     }
