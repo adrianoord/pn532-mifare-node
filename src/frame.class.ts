@@ -50,12 +50,11 @@ export default class Frame {
                     this.isWakeup = true;
                     switch(typeFrame) {
                         case EFrameType.ACKFRAME:
+                        case EFrameType.NACKFRAME:
                             break;
                         case EFrameType.ERRORFRAME:
                             removeListeners();
                             reject(frame);
-                            break;
-                        case EFrameType.NACKFRAME:
                             break;
                         case EFrameType.DATAFRAME:
                             removeListeners();
@@ -72,6 +71,7 @@ export default class Frame {
                     buffer = Buffer.concat([wakeUp, this.toBuffer()]);
                 }
                 this.logger.bufferOut(buffer);
+                await this.sleep(500);
                 this.port.write(buffer);
 
                 timeoutToFinish = setTimeout(() => {
