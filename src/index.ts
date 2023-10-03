@@ -297,14 +297,24 @@ export default class PN532 extends EventEmitter {
                 if (!(await this.getFirmware(500))) {
                     this.port.close();
                     await this.sleep(500);
-                    this.port = new SerialPort({path: this.port.path, baudRate: parseInt(key)});
-                    this._frame = new Frame(this.port, this.logger);
+                    
                 } else {
                     this.logger.step("FINDED BAUDRATE: "+this.port.baudRate);
                     break;
                 }
             }
             resolve(true);
+        });
+    }
+
+    public openSerialPort(path: string, baudRate: number) {
+        this.port = new SerialPort({path, baudRate});
+        this.port.on('data', () => {
+            console.log("Recebido dados...");
+        });
+        this._frame = new Frame(this.port, this.logger);
+        this.port.on('close', () => {
+            this._frame.close();
         });
     }
 

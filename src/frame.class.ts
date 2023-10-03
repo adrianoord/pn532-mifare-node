@@ -26,6 +26,10 @@ export default class Frame {
         });
     }
 
+    public close() {
+        this.port.removeAllListeners('data');
+    }
+
     public setWakeUp(isWakeUp: boolean) {
         this.isWakeup = isWakeUp;
     }
