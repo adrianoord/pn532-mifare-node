@@ -288,7 +288,7 @@ export default class PN532 extends EventEmitter {
                         this.port.close();
                         await this.sleep(500);
                         this.openSerialPort(this.port.path, 230400);
-                        return setTimeout(() => this.open(), 1000);
+                        await this.sleep(500);
                     }
                 }
                 await this.powerDown();
