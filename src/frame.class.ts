@@ -42,7 +42,7 @@ export default class Frame {
             try {
                 var removeListeners = () => {
                     clearTimeout(this.timeoutToFinish);
-                    this.frameEmitter.removeListener('frame', onFrame);
+                    this.frameEmitter.removeAllListeners();
                 };
 
                 // Wire up listening to wait for response (or error) from PN532
