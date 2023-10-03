@@ -14,6 +14,7 @@ export default class Frame {
     private isWakeup: boolean = false;
     private _data: (number | Buffer)[];
     private _direction: number;
+    private timeoutToFinish;
 
     constructor(private port: SerialPort, private logger: {
         step: Function,
@@ -39,10 +40,8 @@ export default class Frame {
         this._direction = direction;
         return new Promise<Buffer>(async (resolve, reject) => {
             try {
-                let timeoutToFinish;
-
                 var removeListeners = () => {
-                    clearTimeout(timeoutToFinish);
+                    clearTimeout(this.timeoutToFinish);
                     this.frameEmitter.removeListener('frame', onFrame);
                 };
 
@@ -76,7 +75,7 @@ export default class Frame {
                 this.logger.bufferOut(buffer);
                 this.port.write(buffer);
 
-                timeoutToFinish = setTimeout(() => {
+                this.timeoutToFinish = setTimeout(() => {
                     removeListeners();
                     reject("timeout");
                 }, 60*1000);
