@@ -31,7 +31,6 @@ export default class Frame {
 
     public close() {
         this.port.removeAllListeners('data');
-        this.frameEmitter.removeListener('frame', onFrame);
     }
 
     public setWakeUp(isWakeUp: boolean) {
