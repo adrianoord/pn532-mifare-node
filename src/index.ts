@@ -281,8 +281,6 @@ export default class PN532 extends EventEmitter {
                 _options.baudRate? null : await this.findBaudRate();
                 _options.baudRate? null : await this.setBaudRate(EBaudRates.BR230400);
                 await this.powerDown();
-                await this.sleep(100);
-                await this.setSAM();
                 this.emit('open');
                 this.isOpen = true;
             } else {
