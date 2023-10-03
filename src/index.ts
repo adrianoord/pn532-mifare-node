@@ -282,9 +282,9 @@ export default class PN532 extends EventEmitter {
         try {
             const _options = this.options;
             if (!this.isOpen && this.port && this.port.isOpen) {
-                await this.powerDown();
                 if (!_options.baudRate) {
                     await this.findBaudRate();
+                    await this.powerDown();
                     while (!(await this.setBaudRate(EBaudRates.BR230400, 200))) {};
                 }
                 await this.powerDown();
