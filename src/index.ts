@@ -34,12 +34,12 @@ export default class PN532 extends EventEmitter {
         bufferOut: Function,
         error: Function
     } = {
-        step: (c) => { },
-        bufferIn: (c) => { },
-        bufferOut: (c) => { },
-        infoCard: (c) => { },
-        error: (c) => { }
-    };
+            step: (c) => { },
+            bufferIn: (c) => { },
+            bufferOut: (c) => { },
+            infoCard: (c) => { },
+            error: (c) => { }
+        };
 
     constructor(private path: string, private pollInterval: number, private options?: {
         encripted: boolean,
@@ -53,9 +53,9 @@ export default class PN532 extends EventEmitter {
         showInfoCard?: boolean,
         baudRate?: number
     }) {
-        super();        
+        super();
         const _options = this.options;
-        
+
         if (_options.showSteps) {
             this.logger.step = (log) => {
                 console.log('Step:', log);
@@ -184,42 +184,38 @@ export default class PN532 extends EventEmitter {
         }
     }
 
-    public async setBaudRate(baudRate: EBaudRates, timeout: number) {
-        return new Promise<boolean>(async (resolve) => {
-            const timeoutInit = setTimeout(() => resolve(false), timeout);
-            this.logger.step("Setting Baud Rate... " + baudRate);
-            const data = [
-                ECOMMANDS.PN532_COMMAND_SETSERIALBAUDRATE
-            ];
-            switch (baudRate) {
-                case EBaudRates.BR9600:
-                    data.push(BytesBaudRate[EBaudRates.BR9600]);
-                    break;
-                case EBaudRates.BR19200:
-                    data.push(BytesBaudRate[EBaudRates.BR19200]);
-                    break;
-                case EBaudRates.BR38400:
-                    data.push(BytesBaudRate[EBaudRates.BR38400]);
-                    break;
-                case EBaudRates.BR57600:
-                    data.push(BytesBaudRate[EBaudRates.BR57600]);
-                    break;
-                case EBaudRates.BR115200:
-                    data.push(BytesBaudRate[EBaudRates.BR115200]);
-                    break;
-                case EBaudRates.BR230400:
-                    data.push(BytesBaudRate[EBaudRates.BR230400]);
-                    break;
-            }
-            await this._frame.runCommand(data, this._direction);
-            clearTimeout(timeoutInit);
-            await this.sendACK();
-            await this.sleep(500);
-            this.port.close();
-            await this.sleep(500);
-            this.openSerialPort(this.port.path, baudRate);
-            await this.sleep(500);
-        });
+    public async setBaudRate(baudRate: EBaudRates) {
+        this.logger.step("Setting Baud Rate... " + baudRate);
+        const data = [
+            ECOMMANDS.PN532_COMMAND_SETSERIALBAUDRATE
+        ];
+        switch (baudRate) {
+            case EBaudRates.BR9600:
+                data.push(BytesBaudRate[EBaudRates.BR9600]);
+                break;
+            case EBaudRates.BR19200:
+                data.push(BytesBaudRate[EBaudRates.BR19200]);
+                break;
+            case EBaudRates.BR38400:
+                data.push(BytesBaudRate[EBaudRates.BR38400]);
+                break;
+            case EBaudRates.BR57600:
+                data.push(BytesBaudRate[EBaudRates.BR57600]);
+                break;
+            case EBaudRates.BR115200:
+                data.push(BytesBaudRate[EBaudRates.BR115200]);
+                break;
+            case EBaudRates.BR230400:
+                data.push(BytesBaudRate[EBaudRates.BR230400]);
+                break;
+        }
+        await this._frame.runCommand(data, this._direction);
+        await this.sendACK();
+        await this.sleep(500);
+        this.port.close();
+        await this.sleep(500);
+        this.openSerialPort(this.port.path, baudRate);
+        await this.sleep(500);
     }
 
     public async sendACK() {
@@ -234,7 +230,7 @@ export default class PN532 extends EventEmitter {
                 ECOMMANDS.PN532_COMMAND_POWERDOWN,
                 0x55
             ];
-            this.logger.step("BaudRate: "+this.port.baudRate);
+            this.logger.step("BaudRate: " + this.port.baudRate);
             await this._frame.runCommand(data, this._direction);
             await this.sleep(this.pollInterval);
             this._frame.setWakeUp(false);
@@ -285,7 +281,7 @@ export default class PN532 extends EventEmitter {
                 if (!_options.baudRate) {
                     await this.findBaudRate();
                     await this.powerDown();
-                    while (!(await this.setBaudRate(EBaudRates.BR230400, 200))) {};
+                    await this.setBaudRate(EBaudRates.BR230400);
                 }
                 await this.powerDown();
                 this.emit('open');
@@ -306,7 +302,7 @@ export default class PN532 extends EventEmitter {
                     await this.sleep(500);
                     this.openSerialPort(this.port.path, parseInt(key));
                 } else {
-                    this.logger.step("FINDED BAUDRATE: "+this.port.baudRate);
+                    this.logger.step("FINDED BAUDRATE: " + this.port.baudRate);
                     await this.sleep(500);
                     break;
                 }
@@ -316,7 +312,7 @@ export default class PN532 extends EventEmitter {
     }
 
     public openSerialPort(path: string, baudRate: number) {
-        this.port = new SerialPort({path, baudRate});
+        this.port = new SerialPort({ path, baudRate });
         this.port.on('data', () => {
             console.log("Recebido dados...");
         });
