@@ -40,7 +40,6 @@ export default class Frame {
                 var removeListeners = () => {
                     clearTimeout(timeoutToFinish);
                     this.frameEmitter.removeListener('frame', onFrame);
-                    this.port.removeAllListeners('data');
                 };
 
                 // Wire up listening to wait for response (or error) from PN532
@@ -71,7 +70,6 @@ export default class Frame {
                     buffer = Buffer.concat([wakeUp, this.toBuffer()]);
                 }
                 this.logger.bufferOut(buffer);
-                await this.sleep(500);
                 this.port.write(buffer);
 
                 timeoutToFinish = setTimeout(() => {

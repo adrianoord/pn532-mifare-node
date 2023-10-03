@@ -296,7 +296,7 @@ export default class PN532 extends EventEmitter {
     async findBaudRate() {
         return new Promise(async (resolve) => {
             for (const key in BytesBaudRate) {
-                if (!(await this.getFirmware(800))) {
+                if (!(await this.getFirmware(500))) {
                     this.port.close();
                     await this.sleep(500);
                     this.port = new SerialPort({path: this.port.path, baudRate: parseInt(key)});
