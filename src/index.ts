@@ -235,8 +235,7 @@ export default class PN532 extends EventEmitter {
 
     public async sendACK() {
         const data = [0, 0, 255, 0, 255, 0];
-        const frame = new Frame(this.port, data, this._direction, this.logger);
-        return frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
+        return this.port.write(data);
     }
 
     async stop() {
