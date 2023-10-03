@@ -284,13 +284,12 @@ export default class PN532 extends EventEmitter {
             const _options = this.options;
             if (!this.isOpen && this.port && this.port.isOpen) {
                 if (!_options.baudRate) {
-                    if (!(await this.setBaudRate(EBaudRates.BR230400, 200))) {
-                        this.port.close();
-                        await this.sleep(500);
-                        this.openSerialPort(this.port.path, 230400);
-                        await this.sleep(500);
-                    }
+                    await this.setBaudRate(EBaudRates.BR230400, 200);
                 }
+                this.port.close();
+                await this.sleep(500);
+                this.openSerialPort(this.port.path, 230400);
+                await this.sleep(500);
                 await this.powerDown();
                 this.emit('open');
                 this.isOpen = true;
