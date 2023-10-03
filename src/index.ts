@@ -55,7 +55,7 @@ export default class PN532 extends EventEmitter {
     }) {
         super();        
         const _options = this.options;
-        this.port = new SerialPort({path: this.path, baudRate: _options.baudRate || 115200});
+        
         if (_options.showSteps) {
             this.logger.step = (log) => {
                 console.log('Step:', log);
@@ -76,7 +76,7 @@ export default class PN532 extends EventEmitter {
                 console.log('InfoCard:', log);
             }
         }
-        this._frame = new Frame(this.port, this.logger);
+        this.openSerialPort(this.path, _options.baudRate || 115200);
 
         this.on('newListener', (event) => {
             if (event === 'data') {
@@ -213,8 +213,7 @@ export default class PN532 extends EventEmitter {
         await this.sleep(500);
         this.port.close();
         await this.sleep(500);
-        const newSerialPort = new SerialPort({ path: this.port.path, baudRate: baudRate });
-        this.port = newSerialPort;
+        this.openSerialPort(this.port.path, baudRate);
         await this.sleep(500);
     }
 
@@ -297,7 +296,7 @@ export default class PN532 extends EventEmitter {
                 if (!(await this.getFirmware(500))) {
                     this.port.close();
                     await this.sleep(500);
-                    
+                    this.openSerialPort(this.port.path, parseInt(key));
                 } else {
                     this.logger.step("FINDED BAUDRATE: "+this.port.baudRate);
                     break;
