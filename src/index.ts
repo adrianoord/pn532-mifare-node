@@ -210,6 +210,7 @@ export default class PN532 extends EventEmitter {
         }
         await this._frame.runCommand(data, this._direction);
         await this.sendACK();
+        await this.sleep(500);
         this.port.close();
         await this.sleep(500);
         const newSerialPort = new SerialPort({ path: this.port.path, baudRate: baudRate });
