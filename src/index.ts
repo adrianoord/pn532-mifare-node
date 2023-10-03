@@ -287,7 +287,7 @@ export default class PN532 extends EventEmitter {
                     if (!(await this.setBaudRate(EBaudRates.BR230400, 200))) {
                         this.port.close();
                         await this.sleep(500);
-                        this.openSerialPort(this.port.path, this.port.baudRate);
+                        this.openSerialPort(this.port.path, 230400);
                         return setTimeout(() => this.open(), 1000);
                     }
                 }
