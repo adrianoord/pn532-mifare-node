@@ -215,6 +215,28 @@ export default class PN532 extends EventEmitter {
         }
     }
 
+    public async setBaudRate() {
+        this.logger.step("Setting Baud Rate... " + 230400);
+        const data = [
+            ECOMMANDS.PN532_COMMAND_SETSERIALBAUDRATE
+        ];
+        data.push(0x05);
+        const frame = new Frame(this.port, data, this._direction, this.logger);
+        await  frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
+        await this.sendACK();
+        this.port.close();
+        await this.sleep(500);
+        const newSerialPort = new SerialPort({ path: this.port.path, baudRate: 230400 });
+        this.port = newSerialPort;
+        await this.sleep(500);
+    }
+
+    public async sendACK() {
+        const data = [0, 0, 255, 0, 255, 0];
+        const frame = new Frame(this.port, data, this._direction, this.logger);
+        return frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
+    }
+
     async stop() {
         this.isOpen = false;
     }
