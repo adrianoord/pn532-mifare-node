@@ -86,6 +86,7 @@ export default class PN532 extends EventEmitter {
                             .then(async (tag) => {
                                 if (tag) {
                                     if (this.isOpen) this.emit('data', tag);
+                                    await this.sleep(this.pollInterval);
                                     scanTag();
                                 } else {
                                     scanTag();
