@@ -321,9 +321,6 @@ export default class PN532 extends EventEmitter {
 
     public openSerialPort(path: string, baudRate: number) {
         this.port = new SerialPort({ path, baudRate });
-        this.port.on('data', () => {
-            console.log("Recebido dados...");
-        });
         this._frame = new Frame(this.port, this.logger);
         this.port.on('close', () => {
             this._frame.close();
