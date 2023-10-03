@@ -9,6 +9,8 @@ export enum EFrameType {
     NACKFRAME = "NACKFRAME"
 }
 
+var onFrame = () => {}
+
 export default class Frame {
     public frameEmitter: EventEmitter = new EventEmitter();
     private isWakeup: boolean = false;
@@ -29,6 +31,7 @@ export default class Frame {
 
     public close() {
         this.port.removeAllListeners('data');
+        this.frameEmitter.removeListener('frame', onFrame);
     }
 
     public setWakeUp(isWakeUp: boolean) {
@@ -44,6 +47,8 @@ export default class Frame {
                     clearTimeout(this.timeoutToFinish);
                     this.frameEmitter.removeListener('frame', onFrame);
                 };
+
+                removeListeners();
 
                 // Wire up listening to wait for response (or error) from PN532
                 var onFrame = (frame) => {
