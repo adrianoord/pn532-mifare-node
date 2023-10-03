@@ -3,24 +3,45 @@ import ECOMMANDS from "./models/commands.enum";
 import { EventEmitter } from "stream";
 import Frame from "./frame.class";
 
+enum EBaudRates {
+    BR9600 = 9600,
+    BR19200 = 19200,
+    BR38400 = 38400,
+    BR57600 = 57600,
+    BR115200 = 115200,
+    BR230400 = 230400
+}
+
+const BytesBaudRate = {
+    9600: 0x00,
+    19200: 0x01,
+    38400: 0x02,
+    57600: 0x03,
+    115200: 0x04,
+    230400: 0x05
+}
+
 export default class PN532 extends EventEmitter {
+    private _frame: Frame;
 
     private _direction: number = 0xd4;
     private isOpen: boolean = false;
-    private isWakeup: boolean = false;
+    private port: SerialPort;
     private logger: {
         step: Function,
         infoCard: Function,
         bufferIn: Function,
-        bufferOut: Function
+        bufferOut: Function,
+        error: Function
     } = {
-        step: (c) => {},
-        bufferIn: (c) => {},
-        bufferOut: (c) => {},
-        infoCard: (c) => {}
+        step: (c) => { },
+        bufferIn: (c) => { },
+        bufferOut: (c) => { },
+        infoCard: (c) => { },
+        error: (c) => { }
     };
 
-    constructor(private port: SerialPort, private pollInterval: number, private options?: {
+    constructor(private path: string, private pollInterval: number, private options?: {
         encripted: boolean,
         tagNumber?: number | Buffer,
         blockAddress?: number | Buffer,
@@ -29,10 +50,12 @@ export default class PN532 extends EventEmitter {
         showSteps?: boolean,
         showBufferIn?: boolean,
         showBufferOut?: boolean,
-        showInfoCard?: boolean
+        showInfoCard?: boolean,
+        baudRate?: number
     }) {
-        super();
+        super();        
         const _options = this.options;
+        this.port = new SerialPort({path: this.path, baudRate: _options.baudRate || 115200});
         if (_options.showSteps) {
             this.logger.step = (log) => {
                 console.log('Step:', log);
@@ -53,21 +76,24 @@ export default class PN532 extends EventEmitter {
                 console.log('InfoCard:', log);
             }
         }
+        this._frame = new Frame(this.port, this.logger);
 
         this.on('newListener', (event) => {
             if (event === 'data') {
                 var scanTag = () => {
                     if (this.isOpen && this.port && this.port.isOpen) {
-                        this.readCard().then(async (tag) => {
-                            if (tag) {
-                                if (this.isOpen) this.emit('data', tag);
-                                this.sleep(this.pollInterval).then(scanTag);
-                            } else {
-                                await this.powerDown();
+                        this.readCard()
+                            .then(async (tag) => {
+                                if (tag) {
+                                    if (this.isOpen) this.emit('data', tag);
+                                    scanTag();
+                                } else {
+                                    scanTag();
+                                }
+                            })
+                            .catch(async () => {
                                 this.sleep(100).then(scanTag);
-                            }
-
-                        });
+                            });
                     } else {
                         this.sleep(100).then(scanTag);
                     }
@@ -77,11 +103,19 @@ export default class PN532 extends EventEmitter {
         });
     }
 
-    public getFirmware() {
-        this.logger.step("Get Firmware...");
-        const data = [0x02];
-        const frame = new Frame(this.port, data, this._direction, this.logger);
-        return frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
+    public async getFirmware(timeout: number) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const timeoutInit = setTimeout(() => resolve(false), timeout);
+                this.logger.step("Get Firmware...");
+                const data = [0x02];
+                await this._frame.runCommand(data, this._direction);
+                clearTimeout(timeoutInit);
+                resolve(true);
+            } catch (_e) {
+                reject(_e);
+            }
+        });
     }
 
     public async getTag() {
@@ -89,12 +123,13 @@ export default class PN532 extends EventEmitter {
         const data = [
             ECOMMANDS.PN532_COMMAND_INLISTPASSIVETARGET,
             0x01,
-            0x00
+            ECOMMANDS.PN532_MIFARE_ISO14443A
         ];
-        const frame = new Frame(this.port, data, this._direction, this.logger);
-        const buffer = await frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
+        const buffer = await this._frame.runCommand(data, this._direction);
         const uid = buffer.slice(1).slice(12, 12 + buffer[10]).toString("hex").match(/.{1,2}/g).join(":");
+        const lengthUid = buffer[10];
         const uidDec = buffer.slice(1).slice(12, 12 + buffer[10]).join('');
+        if (uid.split(":").length != lengthUid) throw "Uid incompativel com o tamanho esperado";
         return {
             uid,
             lengthUid: buffer[10],
@@ -117,8 +152,7 @@ export default class PN532 extends EventEmitter {
             ECOMMANDS.MIFARE_CMD_READ,
             blockAddress,
         ];
-        const frame = new Frame(this.port, data, this._direction, this.logger);
-        const buffer = await frame.runCommand(this.isWakeup);
+        const buffer = await this._frame.runCommand(data, this._direction);
         const dataCard = buffer.slice(8, 8 + 6);
         return dataCard.map((i) => i).join("");
     }
@@ -141,14 +175,51 @@ export default class PN532 extends EventEmitter {
         ].concat(authKey).concat(uidArray);
 
         try {
-            console.debug(uidArray);
-            if(uidArray.length != lgUid) throw 'Tamanho do UID incompativel';
-            const frame = new Frame(this.port, data, this._direction, this.logger);
-            return frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
-        } catch(_e){
-            console.debug(_e);
+            if (uidArray.length != lgUid) throw 'Tamanho do UID incompativel';
+            return this._frame.runCommand(data, this._direction);
+        } catch (_e) {
+            this.logger.error(_e);
             throw _e;
         }
+    }
+
+    public async setBaudRate(baudRate: EBaudRates) {
+        this.logger.step("Setting Baud Rate... " + baudRate);
+        const data = [
+            ECOMMANDS.PN532_COMMAND_SETSERIALBAUDRATE
+        ];
+        switch (baudRate) {
+            case EBaudRates.BR9600:
+                data.push(BytesBaudRate[EBaudRates.BR9600]);
+                break;
+            case EBaudRates.BR19200:
+                data.push(BytesBaudRate[EBaudRates.BR19200]);
+                break;
+            case EBaudRates.BR38400:
+                data.push(BytesBaudRate[EBaudRates.BR38400]);
+                break;
+            case EBaudRates.BR57600:
+                data.push(BytesBaudRate[EBaudRates.BR57600]);
+                break;
+            case EBaudRates.BR115200:
+                data.push(BytesBaudRate[EBaudRates.BR115200]);
+                break;
+            case EBaudRates.BR230400:
+                data.push(BytesBaudRate[EBaudRates.BR230400]);
+                break;
+        }
+        await this._frame.runCommand(data, this._direction);
+        await this.sendACK();
+        this.port.close();
+        await this.sleep(500);
+        const newSerialPort = new SerialPort({ path: this.port.path, baudRate: baudRate });
+        this.port = newSerialPort;
+        await this.sleep(500);
+    }
+
+    public async sendACK() {
+        const data = [0, 0, 255, 0, 255, 0];
+        this.port.write(data);
     }
 
     public async powerDown() {
@@ -158,19 +229,18 @@ export default class PN532 extends EventEmitter {
                 ECOMMANDS.PN532_COMMAND_POWERDOWN,
                 0x55
             ];
-
-            const frame = new Frame(this.port, data, this._direction, this.logger);
-            await frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
-            await this.sleep(900);
-            this.isWakeup = false;
+            this.logger.step("BaudRate: "+this.port.baudRate);
+            await this._frame.runCommand(data, this._direction);
+            await this.sleep(this.pollInterval);
+            this._frame.setWakeUp(false);
             await this.setSAM();
             return;
-        } catch(_e) {
+        } catch (_e) {
             console.error(_e);
         }
     }
 
-    public setSAM() {
+    public async setSAM() {
         try {
             this.logger.step("Setting SAM config...");
             const timeout = 0x00;
@@ -180,9 +250,7 @@ export default class PN532 extends EventEmitter {
                 timeout,
                 0x01 // Use IRQ pin
             ];
-
-            const frame = new Frame(this.port, data, this._direction, this.logger);
-            return frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
+            return this._frame.runCommand(data, this._direction);
         } catch (_e) {
             console.error(_e);
         }
@@ -200,44 +268,45 @@ export default class PN532 extends EventEmitter {
             }
             return infoCard.uidDec;
         } catch (e) {
-            await (new Promise(r => setTimeout(r, 100)));
+            if (e == 'timeout') throw e;
+            await this.sleep(20);
         }
     }
 
     async open() {
-        if (!this.isOpen && this.port && this.port.isOpen) {
-            await this.setBaudRate();
-            await this.powerDown();
-            this.isOpen = true;
-            //await this.setSAM();
-            //await this.getFirmware();
-        } else {
+        try {
+            const _options = this.options;
+            if (!this.isOpen && this.port && this.port.isOpen) {
+                _options.baudRate? null : await this.findBaudRate();
+                _options.baudRate? null : await this.setBaudRate(EBaudRates.BR230400);
+                //await this.powerDown();
+                await this.sleep(100);
+                await this.setSAM();
+                this.emit('open');
+                this.isOpen = true;
+            } else {
+                setTimeout(() => this.open(), 100);
+            }
+        } catch (_e) {
             setTimeout(() => this.open(), 100);
         }
     }
 
-    public async setBaudRate() {
-        this.logger.step("Setting Baud Rate... " + 230400);
-        const data = [
-            ECOMMANDS.PN532_COMMAND_SETSERIALBAUDRATE
-        ];
-        data.push(0x05);
-        const frame = new Frame(this.port, data, this._direction, this.logger);
-        frame.runCommand(this.isWakeup, (res) => {});
-        await this.sleep(500);
-        await this.sendACK();
-        await this.sleep(500);
-        this.port.close();
-        await this.sleep(500);
-        const newSerialPort = new SerialPort({ path: this.port.path, baudRate: 230400 });
-        this.port = newSerialPort;
-        await this.sleep(500);
-    }
-
-    public async sendACK() {
-        this.logger.step("Sending ACK...");
-        const data = [0, 0, 255, 0, 255, 0];
-        return this.port.write(data);
+    async findBaudRate() {
+        return new Promise(async (resolve) => {
+            for (const key in BytesBaudRate) {
+                if (!(await this.getFirmware(500))) {
+                    this.port.close();
+                    await this.sleep(100);
+                    this.port = new SerialPort({path: this.port.path, baudRate: parseInt(key)});
+                    this._frame = new Frame(this.port, this.logger);
+                } else {
+                    this.logger.step("FINDED BAUDRATE: "+this.port.baudRate);
+                    break;
+                }
+            }
+            resolve(true);
+        });
     }
 
     async stop() {
@@ -249,6 +318,6 @@ export default class PN532 extends EventEmitter {
     }
 
     async sleep(ms: number) {
-        return new Promise(r=>setTimeout(r, ms))
+        return new Promise(r => setTimeout(r, ms))
     }
 }

@@ -11,8 +11,11 @@ export enum EFrameType {
 
 export default class Frame {
     public frameEmitter: EventEmitter = new EventEmitter();
+    private isWakeup: boolean = false;
+    private _data: (number | Buffer)[];
+    private _direction: number;
 
-    constructor(private port: SerialPort, private _data, private _direction, private logger: {
+    constructor(private port: SerialPort, private logger: {
         step: Function,
         infoCard: Function,
         bufferIn: Function,
@@ -23,10 +26,19 @@ export default class Frame {
         });
     }
 
-    public runCommand(isWakeup:boolean, callback?:Function) {
+    public setWakeUp(isWakeUp: boolean) {
+        this.isWakeup = isWakeUp;
+    }
+
+    public runCommand(data: (number | Buffer)[], direction: number) {
+        this._data = data;
+        this._direction = direction;
         return new Promise<Buffer>(async (resolve, reject) => {
             try {
+                let timeoutToFinish;
+
                 var removeListeners = () => {
+                    clearTimeout(timeoutToFinish);
                     this.frameEmitter.removeListener('frame', onFrame);
                     this.port.removeAllListeners('data');
                 };
@@ -35,6 +47,7 @@ export default class Frame {
                 var onFrame = (frame) => {
                     this.logger.bufferIn(frame);
                     const typeFrame = this.fromBuffer(frame);
+                    this.isWakeup = true;
                     switch(typeFrame) {
                         case EFrameType.ACKFRAME:
                             break;
@@ -54,13 +67,17 @@ export default class Frame {
 
                 // Send command to PN532
                 var buffer = this.toBuffer();
-                if (!isWakeup) {
+                if (!this.isWakeup) {
                     const wakeUp = Buffer.from([0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
                     buffer = Buffer.concat([wakeUp, this.toBuffer()]);
-                    callback(true);
                 }
                 this.logger.bufferOut(buffer);
                 this.port.write(buffer);
+
+                timeoutToFinish = setTimeout(() => {
+                    removeListeners();
+                    reject("timeout");
+                }, 60*1000);
             } catch (_e) {
                 console.error(_e);
                 reject(_e);
@@ -99,7 +116,7 @@ export default class Frame {
     }
 
     private getDataChecksum() {
-        var dataCopy = this._data.slice();
+        var dataCopy = this._data.slice() as number[];
         dataCopy.push(this._direction);
 
         var sum = dataCopy.reduce((prev, current) => prev + current);
