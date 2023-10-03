@@ -218,7 +218,7 @@ export default class PN532 extends EventEmitter {
             this.port.close();
             await this.sleep(500);
             this.openSerialPort(this.port.path, baudRate);
-            await this.sleep(1500);
+            await this.sleep(500);
             resolve(true);
         });
     }
@@ -283,16 +283,20 @@ export default class PN532 extends EventEmitter {
         try {
             const _options = this.options;
             if (!this.isOpen && this.port && this.port.isOpen) {
-                if (!_options.baudRate) {
-                    await this.setBaudRate(EBaudRates.BR230400, 200);
-                }
-                this.port.close();
-                await this.sleep(500);
-                this.openSerialPort(this.port.path, 230400);
-                await this.sleep(500);
-                await this.powerDown();
-                this.emit('open');
-                this.isOpen = true;
+                await (new Promise<void>(async (resolve) => {
+                    const timeoutInit = setTimeout(() => this.open(), 5000);
+                    if (!_options.baudRate) {
+                        await this.setBaudRate(EBaudRates.BR230400, 200);
+                    }
+                    this.port.close();
+                    await this.sleep(500);
+                    this.openSerialPort(this.port.path, 230400);
+                    await this.sleep(500);
+                    await this.powerDown();
+                    clearTimeout(timeoutInit);
+                    this.emit('open');
+                    this.isOpen = true;
+                }));
             } else {
                 setTimeout(() => this.open(), 100);
             }
