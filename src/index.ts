@@ -298,7 +298,7 @@ export default class PN532 extends EventEmitter {
             for (const key in BytesBaudRate) {
                 if (!(await this.getFirmware(500))) {
                     this.port.close();
-                    await this.sleep(100);
+                    await this.sleep(500);
                     this.port = new SerialPort({path: this.port.path, baudRate: parseInt(key)});
                     this._frame = new Frame(this.port, this.logger);
                 } else {
