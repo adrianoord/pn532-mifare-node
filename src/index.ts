@@ -212,7 +212,6 @@ export default class PN532 extends EventEmitter {
                     break;
             }
             const response = await this._frame.runCommand(data, this._direction);
-
             clearTimeout(timeoutInit);
             await this.sendACK();
             await this.sleep(500);
@@ -220,6 +219,7 @@ export default class PN532 extends EventEmitter {
             await this.sleep(500);
             this.openSerialPort(this.port.path, baudRate);
             await this.sleep(500);
+            resolve(true);
         });
     }
 
