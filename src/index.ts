@@ -300,6 +300,7 @@ export default class PN532 extends EventEmitter {
                     this.openSerialPort(this.port.path, parseInt(key));
                 } else {
                     this.logger.step("FINDED BAUDRATE: "+this.port.baudRate);
+                    await this.sleep(500);
                     break;
                 }
             }
