@@ -206,6 +206,7 @@ export default class PN532 extends EventEmitter {
 
     async open() {
         if (!this.isOpen && this.port && this.port.isOpen) {
+            await this.setBaudRate();
             await this.powerDown();
             this.isOpen = true;
             //await this.setSAM();
@@ -222,7 +223,8 @@ export default class PN532 extends EventEmitter {
         ];
         data.push(0x05);
         const frame = new Frame(this.port, data, this._direction, this.logger);
-        await  frame.runCommand(this.isWakeup, (res) => this.isWakeup = res);
+        frame.runCommand(this.isWakeup, (res) => {});
+        await this.sleep(500);
         await this.sendACK();
         this.port.close();
         await this.sleep(500);
