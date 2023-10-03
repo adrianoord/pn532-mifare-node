@@ -189,7 +189,7 @@ export default class Frame {
                 frameSplited.push(frameToPush);
             }
         }
-        frameSplited.push(data);
+        if (data.length > 0) frameSplited.push(data);
         return frameSplited;
     }
 
