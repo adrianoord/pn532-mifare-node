@@ -23,7 +23,10 @@ export default class Frame {
         bufferOut: Function
     }) {
         this.port.on('data', (frame) => {
-            this.frameEmitter.emit('frame', frame);
+            const dataSplited = this.getSplitedFrame(frame);
+            for (const data of dataSplited) {
+                this.frameEmitter.emit('frame', data);
+            }
         });
     }
 
@@ -167,6 +170,27 @@ export default class Frame {
             buffer[3] === 0xFF &&
             buffer[4] === 0x00 &&
             buffer[5] === ECOMMANDS.POSTAMBLE);
+    }
+
+
+    public getSplitedFrame(data: Buffer) {
+        const frames = [
+            Buffer.from([0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00]),
+            Buffer.from([0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00]),
+            Buffer.from([0x00, 0x00, 0xff, 0x01, 0xff, 0x7f, 0x81, 0x00])
+        ];
+        const frameSplited = [];
+
+        for (let frame of frames) {
+            const idxFrame = data.indexOf(frame);
+            if (idxFrame != -1) {
+                const frameToPush = data.slice(idxFrame, idxFrame + frame.length);
+                data = data.slice(idxFrame + frame.length);
+                frameSplited.push(frameToPush);
+            }
+        }
+        frameSplited.push(data);
+        return frameSplited;
     }
 
     async sleep(ms: number) {
