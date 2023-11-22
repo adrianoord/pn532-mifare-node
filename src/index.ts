@@ -216,8 +216,7 @@ export default class PN532 extends EventEmitter {
             await this.sleep(500);
             this.port.close();
             await this.sleep(500);
-            this.openSerialPort(this.path, baudRate);
-            await this.sleep(500);
+            await this.openSerialPort(this.path, baudRate);
             this._frame = new Frame(this.port, this.logger);
             resolve(true);
         });
@@ -282,8 +281,7 @@ export default class PN532 extends EventEmitter {
     public async open() {
         try {
             const _options = this.options;
-            this.openSerialPort(this.path, _options.baudRate || 115200);
-            await this.sleep(500);
+            await this.openSerialPort(this.path, _options.baudRate || 115200);
             this._frame = new Frame(this.port, this.logger);
             if (!this.isOpen && this.port && this.port.isOpen) {
                 await (new Promise<void>(async (resolve) => {
@@ -293,8 +291,7 @@ export default class PN532 extends EventEmitter {
                     }
                     this.port.close();
                     await this.sleep(500);
-                    this.openSerialPort(this.path, 115200);
-                    await this.sleep(500);
+                    await this.openSerialPort(this.path, 115200);
                     this._frame = new Frame(this.port, this.logger);
                     await this.powerDown();
                     clearTimeout(timeoutInit);
@@ -315,8 +312,7 @@ export default class PN532 extends EventEmitter {
                 if (!(await this.getFirmware(500))) {
                     this.port.close();
                     await this.sleep(500);
-                    this.openSerialPort(this.path, parseInt(key));
-                    await this.sleep(500);
+                    await this.openSerialPort(this.path, parseInt(key));
                     this._frame = new Frame(this.port, this.logger);
                 } else {
                     this.logger.step("FINDED BAUDRATE: " + this.port.baudRate);
@@ -329,9 +325,23 @@ export default class PN532 extends EventEmitter {
     }
 
     private openSerialPort(path: string, baudRate: number) {
-        this.port = new SerialPort({ path, baudRate });
-        this.port.on('close', () => {
-            this._frame.close();
+        return new Promise<void>((r, _) => {
+            this.port = new SerialPort({ path, baudRate, autoOpen: true });
+            this.port.on('close', () => {
+                try {
+                    this._frame.close();
+                } catch(e){}
+                _();
+            });
+            this.port.on('error', () => {
+                try {
+                    this._frame.close();
+                } catch(e){}
+                _();
+            });
+            this.port.on('open', () => {
+                r();
+            });
         });
     }
 
@@ -345,7 +355,7 @@ export default class PN532 extends EventEmitter {
 
     async close() {
         this.isOpen = false;
-        this.port.isOpen? this.port.close():"";
+        this.port.isOpen ? this.port.close() : "";
     }
 
     private async sleep(ms: number) {
