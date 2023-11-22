@@ -104,7 +104,7 @@ export default class PN532 extends EventEmitter {
         });
     }
 
-    public async getFirmware(timeout: number) {
+    private async getFirmware(timeout: number) {
         return new Promise(async (resolve, reject) => {
             try {
                 const timeoutInit = setTimeout(() => resolve(false), timeout);
@@ -119,7 +119,7 @@ export default class PN532 extends EventEmitter {
         });
     }
 
-    public async getTag() {
+    private async getTag() {
         this.logger.step("Waiting tag...");
         const data = [
             ECOMMANDS.PN532_COMMAND_INLISTPASSIVETARGET,
@@ -140,7 +140,7 @@ export default class PN532 extends EventEmitter {
         }
     }
 
-    async readBlock() {
+    private async readBlock() {
         this.logger.step("Read block...");
         const _options = this.options;
 
@@ -158,7 +158,7 @@ export default class PN532 extends EventEmitter {
         return dataCard.map((i) => i).join("");
     }
 
-    authenticateBlock(uidArray: any, lgUid: number) {
+    private authenticateBlock(uidArray: any, lgUid: number) {
         this.logger.step("Authenticate block...");
         const options = this.options;
 
@@ -184,7 +184,7 @@ export default class PN532 extends EventEmitter {
         }
     }
 
-    public async setBaudRate(baudRate: EBaudRates, timeout: number) {
+    private async setBaudRate(baudRate: EBaudRates, timeout: number) {
         return new Promise<boolean>(async (resolve) => {
             const timeoutInit = setTimeout(() => resolve(false), timeout);
             this.logger.step("Setting Baud Rate... " + baudRate);
@@ -223,12 +223,12 @@ export default class PN532 extends EventEmitter {
         });
     }
 
-    public async sendACK() {
+    private async sendACK() {
         const data = [0, 0, 255, 0, 255, 0];
         this.port.write(data);
     }
 
-    public async powerDown() {
+    private async powerDown() {
         try {
             this.logger.step("Setting Power Down...");
             const data = [
@@ -246,7 +246,7 @@ export default class PN532 extends EventEmitter {
         }
     }
 
-    public async setSAM() {
+    private async setSAM() {
         try {
             this.logger.step("Setting SAM config...");
             const timeout = 0x00;
@@ -262,7 +262,7 @@ export default class PN532 extends EventEmitter {
         }
     }
 
-    async readCard() {
+    private async readCard() {
         try {
             const options = this.options;
             const infoCard = await this.getTag();
@@ -279,18 +279,18 @@ export default class PN532 extends EventEmitter {
         }
     }
 
-    async open() {
+    public async open() {
         try {
             const _options = this.options;
             if (!this.isOpen && this.port && this.port.isOpen) {
                 await (new Promise<void>(async (resolve) => {
                     const timeoutInit = setTimeout(() => this.open(), 5000);
                     if (!_options.baudRate) {
-                        await this.setBaudRate(EBaudRates.BR230400, 200);
+                        await this.setBaudRate(EBaudRates.BR115200, 200);
                     }
                     this.port.close();
                     await this.sleep(500);
-                    this.openSerialPort(this.port.path, 230400);
+                    this.openSerialPort(this.port.path, 115200);
                     await this.sleep(500);
                     await this.powerDown();
                     clearTimeout(timeoutInit);
@@ -305,7 +305,7 @@ export default class PN532 extends EventEmitter {
         }
     }
 
-    async findBaudRate() {
+    private findBaudRate() {
         return new Promise(async (resolve) => {
             for (const key in BytesBaudRate) {
                 if (!(await this.getFirmware(500))) {
@@ -322,7 +322,7 @@ export default class PN532 extends EventEmitter {
         });
     }
 
-    public openSerialPort(path: string, baudRate: number) {
+    private openSerialPort(path: string, baudRate: number) {
         this.port = new SerialPort({ path, baudRate });
         this._frame = new Frame(this.port, this.logger);
         this.port.on('close', () => {
@@ -338,7 +338,12 @@ export default class PN532 extends EventEmitter {
         this.isOpen = true;
     }
 
-    async sleep(ms: number) {
+    async close() {
+        this.isOpen = false;
+        this.port.isOpen? this.port.close():"";
+    }
+
+    private async sleep(ms: number) {
         return new Promise(r => setTimeout(r, ms))
     }
 }
