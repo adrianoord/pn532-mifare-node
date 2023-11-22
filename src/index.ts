@@ -154,8 +154,13 @@ export default class PN532 extends EventEmitter {
         ];
         const buffer = await this._frame.runCommand(data, this._direction);
         console.log(buffer);
-        const dataCard = buffer.slice(8, 8 + 8);
-        return dataCard.map((i) => i).join("");
+        const dataCard = buffer.slice(8, 8 + 6);
+        const dataNumbers = Array.prototype.slice.call(dataCard);
+        const dataFormated = dataNumbers.map((i) => {
+            if ( i < 10) return "0"+i;
+            return ""+i;
+        }).join("");
+        return dataFormated;
     }
 
     private authenticateBlock(uidArray: any, lgUid: number) {
