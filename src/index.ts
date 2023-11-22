@@ -76,7 +76,6 @@ export default class PN532 extends EventEmitter {
                 console.log('InfoCard:', log);
             }
         }
-        this.openSerialPort(this.path, _options.baudRate || 115200);
 
         this.on('newListener', (event) => {
             if (event === 'data') {
@@ -282,6 +281,8 @@ export default class PN532 extends EventEmitter {
     public async open() {
         try {
             const _options = this.options;
+            this.openSerialPort(this.path, _options.baudRate || 115200);
+            await this.sleep(500);
             if (!this.isOpen && this.port && this.port.isOpen) {
                 await (new Promise<void>(async (resolve) => {
                     const timeoutInit = setTimeout(() => this.open(), 5000);
