@@ -287,7 +287,7 @@ export default class PN532 extends EventEmitter {
                 await (new Promise<void>(async (resolve) => {
                     const timeoutInit = setTimeout(() => this.open(), 5000);
                     if (!_options.baudRate) {
-                        await this.findBaudRate();
+                        //await this.findBaudRate();
                         await this.setBaudRate(EBaudRates.BR230400, 1000);
                     }
                     this.port.close();
