@@ -218,6 +218,7 @@ export default class PN532 extends EventEmitter {
             await this.sleep(500);
             this.openSerialPort(this.port.path, baudRate);
             await this.sleep(500);
+            this._frame = new Frame(this.port, this.logger);
             resolve(true);
         });
     }
@@ -283,6 +284,7 @@ export default class PN532 extends EventEmitter {
             const _options = this.options;
             this.openSerialPort(this.path, _options.baudRate || 115200);
             await this.sleep(500);
+            this._frame = new Frame(this.port, this.logger);
             if (!this.isOpen && this.port && this.port.isOpen) {
                 await (new Promise<void>(async (resolve) => {
                     const timeoutInit = setTimeout(() => this.open(), 5000);
@@ -293,6 +295,7 @@ export default class PN532 extends EventEmitter {
                     await this.sleep(500);
                     this.openSerialPort(this.port.path, 115200);
                     await this.sleep(500);
+                    this._frame = new Frame(this.port, this.logger);
                     await this.powerDown();
                     clearTimeout(timeoutInit);
                     this.emit('open');
@@ -313,6 +316,8 @@ export default class PN532 extends EventEmitter {
                     this.port.close();
                     await this.sleep(500);
                     this.openSerialPort(this.port.path, parseInt(key));
+                    await this.sleep(500);
+                    this._frame = new Frame(this.port, this.logger);
                 } else {
                     this.logger.step("FINDED BAUDRATE: " + this.port.baudRate);
                     await this.sleep(500);
@@ -325,7 +330,6 @@ export default class PN532 extends EventEmitter {
 
     private openSerialPort(path: string, baudRate: number) {
         this.port = new SerialPort({ path, baudRate });
-        this._frame = new Frame(this.port, this.logger);
         this.port.on('close', () => {
             this._frame.close();
         });
