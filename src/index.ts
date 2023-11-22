@@ -153,7 +153,8 @@ export default class PN532 extends EventEmitter {
             blockAddress,
         ];
         const buffer = await this._frame.runCommand(data, this._direction);
-        const dataCard = buffer.slice(7, 7 + 6);
+        console.log(buffer);
+        const dataCard = buffer.slice(8, 8 + 6);
         return dataCard.map((i) => i).join("");
     }
 
@@ -238,7 +239,6 @@ export default class PN532 extends EventEmitter {
             await this._frame.runCommand(data, this._direction);
             await this.sleep(this.pollInterval);
             this._frame.setWakeUp(false);
-            await this.setSAM();
             return;
         } catch (_e) {
             console.error(_e);
@@ -288,14 +288,14 @@ export default class PN532 extends EventEmitter {
                     const timeoutInit = setTimeout(() => this.open(), 5000);
                     await this.setSAM();
                     if (!_options.baudRate) {
-                        //await this.findBaudRate();
+                        await this.findBaudRate();
                         await this.setBaudRate(EBaudRates.BR230400, 1000);
                     }
                     this.port.close();
                     await this.sleep(500);
                     await this.openSerialPort(this.path, EBaudRates.BR230400);
                     this._frame = new Frame(this.port, this.logger);
-                    //await this.powerDown();
+                    await this.powerDown();
                     clearTimeout(timeoutInit);
                     this.emit('open');
                     this.isOpen = true;
