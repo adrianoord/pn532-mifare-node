@@ -216,7 +216,7 @@ export default class PN532 extends EventEmitter {
             await this.sleep(500);
             this.port.close();
             await this.sleep(500);
-            this.openSerialPort(this.port.path, baudRate);
+            this.openSerialPort(this.path, baudRate);
             await this.sleep(500);
             this._frame = new Frame(this.port, this.logger);
             resolve(true);
@@ -293,7 +293,7 @@ export default class PN532 extends EventEmitter {
                     }
                     this.port.close();
                     await this.sleep(500);
-                    this.openSerialPort(this.port.path, 115200);
+                    this.openSerialPort(this.path, 115200);
                     await this.sleep(500);
                     this._frame = new Frame(this.port, this.logger);
                     await this.powerDown();
@@ -315,7 +315,7 @@ export default class PN532 extends EventEmitter {
                 if (!(await this.getFirmware(500))) {
                     this.port.close();
                     await this.sleep(500);
-                    this.openSerialPort(this.port.path, parseInt(key));
+                    this.openSerialPort(this.path, parseInt(key));
                     await this.sleep(500);
                     this._frame = new Frame(this.port, this.logger);
                 } else {
