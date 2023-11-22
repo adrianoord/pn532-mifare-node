@@ -328,16 +328,18 @@ export default class PN532 extends EventEmitter {
         return new Promise<void>((r, _) => {
             this.port = new SerialPort({ path, baudRate, autoOpen: true });
             this.port.on('close', () => {
-                try {
-                    this._frame.close();
-                } catch(e){}
-                _();
+                // try {
+                //     this._frame.close();
+                // } catch(e){}
+                // _();
+                r();
             });
             this.port.on('error', () => {
-                try {
-                    this._frame.close();
-                } catch(e){}
-                _();
+                // try {
+                //     this._frame.close();
+                // } catch(e){}
+                // _();
+                r();
             });
             this.port.on('open', () => {
                 r();
