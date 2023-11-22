@@ -286,6 +286,7 @@ export default class PN532 extends EventEmitter {
             if (!this.isOpen && this.port && this.port.isOpen) {
                 await (new Promise<void>(async (resolve) => {
                     const timeoutInit = setTimeout(() => this.open(), 5000);
+                    await this.setSAM();
                     if (!_options.baudRate) {
                         //await this.findBaudRate();
                         await this.setBaudRate(EBaudRates.BR230400, 1000);
@@ -294,7 +295,7 @@ export default class PN532 extends EventEmitter {
                     await this.sleep(500);
                     await this.openSerialPort(this.path, EBaudRates.BR230400);
                     this._frame = new Frame(this.port, this.logger);
-                    await this.powerDown();
+                    //await this.powerDown();
                     clearTimeout(timeoutInit);
                     this.emit('open');
                     this.isOpen = true;
