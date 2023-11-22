@@ -79,7 +79,7 @@ export default class Frame {
                     buffer = Buffer.concat([wakeUp, this.toBuffer()]);
                 }
                 this.logger.bufferOut(buffer);
-                console.log(this.port);
+                console.log(this.port.isOpen);
                 this.port.write(buffer);
 
                 this.timeoutToFinish = setTimeout(() => {
