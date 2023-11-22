@@ -153,7 +153,7 @@ export default class PN532 extends EventEmitter {
             blockAddress,
         ];
         const buffer = await this._frame.runCommand(data, this._direction);
-        const dataCard = buffer.slice(8, 8 + 6);
+        const dataCard = buffer.slice(7, 7 + 6);
         return dataCard.map((i) => i).join("");
     }
 
