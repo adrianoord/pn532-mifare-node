@@ -103,21 +103,6 @@ export default class PN532 extends EventEmitter {
         });
     }
 
-    private async getFirmware(timeout: number) {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const timeoutInit = setTimeout(() => resolve(false), timeout);
-                this.logger.step("Get Firmware...");
-                const data = [0x02];
-                await this._frame.runCommand(data, this._direction);
-                clearTimeout(timeoutInit);
-                resolve(true);
-            } catch (_e) {
-                reject(_e);
-            }
-        });
-    }
-
     private async getTag() {
         this.logger.step("Waiting tag...");
         const data = [
@@ -157,8 +142,8 @@ export default class PN532 extends EventEmitter {
         const dataCard = buffer.slice(8, 8 + 6);
         const dataNumbers = Array.prototype.slice.call(dataCard);
         const dataFormated = dataNumbers.map((i) => {
-            if ( i < 10) return "0"+i;
-            return ""+i;
+            if (i < 10) return "0" + i;
+            return "" + i;
         }).join("");
         return dataFormated;
     }
@@ -250,20 +235,40 @@ export default class PN532 extends EventEmitter {
         }
     }
 
-    private async setSAM() {
-        try {
-            this.logger.step("Setting SAM config...");
-            const timeout = 0x00;
-            const data = [
-                ECOMMANDS.PN532_COMMAND_SAMCONFIGURATION,
-                ECOMMANDS.SAMCONFIGURATION_MODE_NORMAL,
-                timeout,
-                0x01 // Use IRQ pin
-            ];
-            return this._frame.runCommand(data, this._direction);
-        } catch (_e) {
-            console.error(_e);
-        }
+    private async setSAM(tout: number) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const timeoutInit = setTimeout(() => resolve(false), tout);
+                this.logger.step("Setting SAM config...");
+                const timeout = 0x00;
+                const data = [
+                    ECOMMANDS.PN532_COMMAND_SAMCONFIGURATION,
+                    ECOMMANDS.SAMCONFIGURATION_MODE_NORMAL,
+                    timeout,
+                    0x01 // Use IRQ pin
+                ];
+                await this._frame.runCommand(data, this._direction);
+                clearTimeout(timeoutInit);
+                resolve(true);
+            } catch (_e) {
+                reject(_e);
+            }
+        });
+    }
+
+    private async getFirmware(timeout: number) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const timeoutInit = setTimeout(() => resolve(false), timeout);
+                this.logger.step("Get Firmware...");
+                const data = [0x02];
+                await this._frame.runCommand(data, this._direction);
+                clearTimeout(timeoutInit);
+                resolve(true);
+            } catch (_e) {
+                reject(_e);
+            }
+        });
     }
 
     private async readCard() {
@@ -288,44 +293,11 @@ export default class PN532 extends EventEmitter {
             const _options = this.options;
             await this.openSerialPort(this.path, _options.baudRate || 115200);
             this._frame = new Frame(this.port, this.logger);
-            await this.setSAM();
             if (!this.isOpen && this.port && this.port.isOpen) {
                 await (new Promise<void>(async (resolve) => {
                     const timeoutInit = setTimeout(() => this.open(), 5000);
                     if (!_options.baudRate) {
                         await this.findBaudRate();
-                        await this.setBaudRate(EBaudRates.BR230400, 1000);
-                    }
-                    this.port.close();
-                    await this.sleep(500);
-                    await this.openSerialPort(this.path, EBaudRates.BR230400);
-                    this._frame = new Frame(this.port, this.logger);
-                    await this.powerDown();
-                    clearTimeout(timeoutInit);
-                    this.emit('open');
-                    this.isOpen = true;
-                }));
-            } else {
-                setTimeout(() => this.open(), 100);
-            }
-        } catch (_e) {
-            setTimeout(() => this.open(), 100);
-        }
-    }
-
-    private async reset() {
-        try {
-            const _options = this.options;
-            this.port.close();
-            await this.sleep(500);
-            await this.openSerialPort(this.path, _options.baudRate || 230400);
-            this._frame = new Frame(this.port, this.logger);
-            if (!this.isOpen && this.port && this.port.isOpen) {
-                await (new Promise<void>(async (resolve) => {
-                    const timeoutInit = setTimeout(() => this.open(), 5000);
-                    if (!_options.baudRate) {
-                        await this.findBaudRate();
-                        await this.setSAM();
                         await this.setBaudRate(EBaudRates.BR230400, 1000);
                     }
                     this.port.close();
@@ -348,7 +320,7 @@ export default class PN532 extends EventEmitter {
     private findBaudRate() {
         return new Promise(async (resolve) => {
             for (const key in BytesBaudRate) {
-                if (!(await this.getFirmware(500))) {
+                if (!(await this.setSAM(500))) {
                     this.port.close();
                     await this.sleep(500);
                     await this.openSerialPort(this.path, parseInt(key));
