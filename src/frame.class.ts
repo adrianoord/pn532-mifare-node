@@ -23,7 +23,6 @@ export default class Frame {
         bufferOut: Function
     }) {
         this.port.on('data', (frame) => {
-            console.log(frame);
             const dataSplited = this.getSplitedFrame(frame);
             for (const data of dataSplited) {
                 this.frameEmitter.emit('frame', data);
