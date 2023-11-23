@@ -319,6 +319,7 @@ export default class PN532 extends EventEmitter {
 
     private findBaudRate() {
         return new Promise(async (resolve) => {
+            this.logger.step("FINDING BAUDRATE...");
             for (const key in BytesBaudRate) {
                 if (!(await this.setSAM(500))) {
                     this.port.close();
