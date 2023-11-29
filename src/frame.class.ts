@@ -74,10 +74,10 @@ export default class Frame {
 
                 // Send command to PN532
                 var buffer = this.toBuffer();
-                if (!this.isWakeup) {
+                //if (!this.isWakeup) {
                     const wakeUp = Buffer.from([0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
                     buffer = Buffer.concat([wakeUp, this.toBuffer()]);
-                }
+                //}
                 this.logger.bufferOut(buffer);
                 this.port.write(buffer);
 
